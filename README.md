@@ -9,3 +9,5 @@ GPUs won't play no more
 
 Too much fighting on the tensor floor
 
+Здесь план действий
+https://trello.com/invite/b/KRVSGsik/5a52fa8eefbf047f9f28c26ee2a441b3/video-sequence-enhancement
