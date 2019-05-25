@@ -24,8 +24,8 @@ val_fns = glob.glob(gt_dir + '2*.ARW')
 val_ids = [int(os.path.basename(val_fn)[0:5]) for val_fn in val_fns]
 
 ps = 512  # patch size for training
-save_freq = 500
-val_freq = 100
+save_freq = 200
+val_freq = 10
 DEBUG = 0
 if DEBUG == 1:
     save_freq = 2
@@ -112,6 +112,8 @@ val_images['250'] = [None] * len(val_ids)
 val_images['100'] = [None] * len(val_ids)
 g_loss = np.zeros((5000, 1))
 psnr_arr = np.zeros((5000, 1))
+val_g_loss = np.zeros((5000, 1))
+val_psnr_arr = np.zeros((5000, 1))
 
 #
 # allfolders = glob.glob('./result/*0')
@@ -169,10 +171,10 @@ def validation_sessions(epoch):
         G_current, PSNR_current, output = sess.run([G_loss, PSNR, out_image],
                                         feed_dict={in_image: input_patch, gt_image: gt_patch})
         output = np.minimum(np.maximum(output, 0), 1)
-        psnr_arr[ind] = PSNR_current
-        g_loss[ind] = G_current
-        avgPSNR = np.mean(psnr_arr[np.where(psnr_arr)])
-        avgGloss = np.mean(g_loss[np.where(g_loss)])
+        val_psnr_arr[ind] = PSNR_current
+        val_g_loss[ind] = G_current
+        avgPSNR = np.mean(val_psnr_arr[np.where(val_psnr_arr)])
+        avgGloss = np.mean(val_g_loss[np.where(val_g_loss)])
 
         print("%d val %d Loss=%.3f Time=%.3f PSNR = %.3f" % (epoch, cnt, avgGloss, time.time() - st, avgPSNR))
 
@@ -182,10 +184,10 @@ def validation_sessions(epoch):
 
         temp = np.concatenate((gt_patch[0, :, :, :], output[0, :, :, :]), axis=1)
         scipy.misc.toimage(temp * 255, high=255, low=0, cmin=0, cmax=255).save(
-            nam + '/%05d_00_train_%d.jpg' % (train_id, ratio))
+            nam + '/%05d_00_val_%d.jpg' % (val_id, ratio))
 
-    avgPSNR = np.mean(psnr_arr[np.where(psnr_arr)])
-    avgGloss = np.mean(g_loss[np.where(g_loss)])
+    avgPSNR = np.mean(val_psnr_arr[np.where(val_psnr_arr)])
+    avgGloss = np.mean(val_g_loss[np.where(val_g_loss)])
     summ = sess.run(performance_summaries, feed_dict={tf_psnr_ph: avgPSNR, tf_glos_ph: avgGloss})
     # Write the obtained summaries to the file, so it can be displayed in the TensorBoard
     val_writer.add_summary(summ, epoch)
@@ -195,9 +197,11 @@ for epoch in range(0, 5001):
     if os.path.isdir("result/%04d" % epoch):
         continue
     cnt = 0
-    if epoch > 2000 and epoch <=4000:
+    if epoch > 20 and epoch <=2000:
         learning_rate = 1e-4
-    elif epoch> 4000:
+    elif epoch> 2000 and epoch <=4000:
+        learning_rate = 1.5e-5
+    else:
         learning_rate = 1e-5
 
     for ind in np.random.permutation(len(train_ids)):
@@ -265,5 +269,7 @@ for epoch in range(0, 5001):
                 nam + '/%05d_00_train_%d.jpg' % (train_id, ratio))
     if epoch % val_freq == 0:
         validation_sessions(epoch)
-    saver.save(sess, checkpoint_dir + 'model.ckpt')
+    namecheckpoint = os.path.join(checkpoint_dir , 'model.ckpt')
+    saver.save(sess, namecheckpoint)
+
 sess.close()
